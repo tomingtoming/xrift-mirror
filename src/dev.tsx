@@ -37,7 +37,7 @@ const XRiftDevBridge = ({ children }: { children: ReactNode }) => {
 }
 
 const App = () => (
-  <DevEnvironment camera={{ position: [0, 1.5, 3.6] }} spawnPosition={[0, 1, 3.6]}>
+  <DevEnvironment camera={{ position: [0, 1.6, 6] }} spawnPosition={[0, 1, 6]}>
     <XRiftDevBridge>
       <ItemProvider id="dev-mirror-item">
         <PlacementStateProvider mode={placementMode}>
