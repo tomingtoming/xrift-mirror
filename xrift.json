@@ -1,0 +1,9 @@
+{
+  "item": {
+    "distDir": "./dist",
+    "buildCommand": "npm run build",
+    "title": "姿見ミラー",
+    "description": "どのワールドにも持ち込める鏡。HQ/LQ/OFFの3モードをボタンで切替できます（全員に同期）。HQ=高解像度・LQ=軽量・OFF=枠だけ。10m以上離れると自動で軽量な擬似ミラーに切り替わります。重い演出なので、使い終わったらOFF推奨。",
+    "thumbnailPath": "thumbnail.png"
+  }
+}

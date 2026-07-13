@@ -1,0 +1,66 @@
+/**
+ * 開発環境用エントリーポイント
+ *
+ * DevEnvironment（WASD移動・クロスヘア・Interactableクリック・movement注入）の上で
+ * アイテムを単体プレビューする。本番ビルドには含まれない。
+ */
+
+import type { ReactNode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { RigidBody } from '@react-three/rapier'
+import {
+  DevEnvironment,
+  ItemProvider,
+  PlacementStateProvider,
+  XRiftProvider,
+  useUsers,
+} from '@xrift/world-components'
+import { Item } from './Item'
+
+/** `?preview` を付けて開くと設置プレビュー（張りぼて）モードを確認できる */
+const placementMode = new URLSearchParams(window.location.search).has('preview')
+  ? ('preview' as const)
+  : ('placed' as const)
+
+/**
+ * XRiftProvider は UsersProvider を内包していて、素で被せると
+ * DevEnvironment が注入した movement 実装を空実装で影に隠してしまう。
+ * ここで useUsers() の値を吸い上げて渡し直すことで両立させる。
+ */
+const XRiftDevBridge = ({ children }: { children: ReactNode }) => {
+  const users = useUsers()
+  return (
+    <XRiftProvider baseUrl="/" usersImplementation={users}>
+      {children}
+    </XRiftProvider>
+  )
+}
+
+const App = () => (
+  <DevEnvironment camera={{ position: [0, 1.5, 3.6] }} spawnPosition={[0, 1, 3.6]}>
+    <XRiftDevBridge>
+      <ItemProvider id="dev-mirror-item">
+        <PlacementStateProvider mode={placementMode}>
+          <Item position={[0, 0, 0]} />
+        </PlacementStateProvider>
+      </ItemProvider>
+    </XRiftDevBridge>
+
+    {/* 地面 */}
+    <RigidBody type="fixed" colliders="cuboid">
+      <mesh receiveShadow position={[0, -0.05, 0]}>
+        <boxGeometry args={[30, 0.1, 30]} />
+        <meshStandardMaterial color="#4a4f5a" />
+      </mesh>
+    </RigidBody>
+    <gridHelper args={[30, 30, '#777777', '#333333']} position={[0, 0.01, 0]} />
+
+    <ambientLight intensity={0.5} />
+    <directionalLight position={[5, 8, 3]} intensity={1.2} castShadow />
+  </DevEnvironment>
+)
+
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Root element not found')
+
+createRoot(rootElement).render(<App />)
