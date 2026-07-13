@@ -88,11 +88,15 @@ const MirrorLive = ({ position = [0, 0, 0], scale = 1 }: ItemProps) => {
         </mesh>
       </RigidBody>
 
-      {/* 鏡面（OFFのときは消灯ガラス） */}
+      {/* 鏡面（OFFのときは消灯ガラス）
+          color=0x808080: 公式Mirror既定の0xccccccはReflectorのblendOverlayで
+          中間調を約1.6倍に持ち上げ、鏡の中だけ全てパステルに脱色する。
+          overlay(base, 0.5)は恒等変換＝無色の正しい鏡 */}
       {mode !== 'off' ? (
         <Mirror
           position={[0, CENTER_Y, 0]}
           size={[MIRROR_W, MIRROR_H]}
+          color={0x808080}
           textureResolution={mode === 'hq' ? 1024 : 256}
         />
       ) : (
