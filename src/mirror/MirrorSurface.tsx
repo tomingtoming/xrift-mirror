@@ -63,6 +63,7 @@ export const MirrorSurface = ({
     })
     reflector.reflectLayersMask = quality === 'hq' ? FULL_SCENE_MASK : AVATAR_ONLY_MASK
     reflector.visible = reflectingRef.current
+    console.warn(`[xrift-mirror] MirrorSurface mount quality=${quality}`)
 
     if (quality === 'lq') {
       // アバター(SkinnedMesh)とライトへの鏡用レイヤータグ付け。
@@ -84,7 +85,7 @@ export const MirrorSurface = ({
               .filter((o) => (o as Object3D & { isSkinnedMesh?: boolean }).isSkinnedMesh)
               .slice(0, 8)
               .map((o) => `${o.name || '(no name)'}#layers=${o.layers.mask}`)
-            console.info(`[xrift-mirror] LQ scan: ${summary}`, skinnedInfo)
+            console.warn(`[xrift-mirror] LQ scan: ${summary}`, skinnedInfo)
           }
         }
         for (const o of targets) o.layers.enable(MIRROR_AVATAR_LAYER)
@@ -117,6 +118,7 @@ export const MirrorSurface = ({
       reflectingRef.current = reflecting
       reflector.visible = reflecting
       if (fallbackRef.current) fallbackRef.current.visible = !reflecting
+      console.warn(`[xrift-mirror] LOD reflecting=${reflecting} d=${distance.toFixed(1)}m`)
     }
   })
 

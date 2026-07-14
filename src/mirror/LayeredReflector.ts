@@ -106,6 +106,7 @@ export class LayeredReflector extends Mesh {
     super(geometry)
 
     const scope = this
+    let loggedFirstPass = false // 実機診断（0.3.x安定後に撤去）
 
     const textureWidth = options.textureWidth || 512
     const textureHeight = options.textureHeight || 512
@@ -157,6 +158,11 @@ export class LayeredReflector extends Mesh {
 
       // 鏡が背を向けているときは反射を更新しない
       const isFacingAway = view.dot(normal) > 0
+
+      if (!loggedFirstPass) {
+        loggedFirstPass = true
+        console.warn(`[xrift-mirror] reflect pass running (facingAway=${isFacingAway})`)
+      }
 
       if (isFacingAway === true && scope.forceUpdate === false) return
 

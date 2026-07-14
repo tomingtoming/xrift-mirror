@@ -53,6 +53,10 @@ export interface StandMirrorProps {
 
 const PEDESTAL_H = 0.22
 
+/** 実機診断バナー（初回マウント時に一度だけ）: 本番で旧バンドルが
+ *  キャッシュされていないかの確認用。0.3.x安定後に撤去する */
+let bannerShown = false
+
 /**
  * width/height から枠・台座・スイッチ列の配置を導く。
  * Item.tsx の設置プレビュー（張りぼて）と共有するため公開。
@@ -99,9 +103,14 @@ export const StandMirror = ({
   renderInteract = defaultRenderInteract,
   id = 'xrift-mirror',
 }: StandMirrorProps) => {
+  if (!bannerShown) {
+    bannerShown = true
+    console.warn('[xrift-mirror] StandMirror v0.3.2 active')
+  }
   const [localMode, setLocalMode] = useState<MirrorMode>(defaultMode)
   const mode = controlledMode ?? localMode
   const setMode = (m: MirrorMode) => {
+    console.warn(`[xrift-mirror] mode -> ${m}`)
     onModeChange?.(m)
     if (controlledMode === undefined) setLocalMode(m)
   }
@@ -171,7 +180,8 @@ const ModeButton = ({ color, active, label }: { color: string; active: boolean; 
       anchorX="center"
       anchorY="middle"
       outlineWidth={0.002}
-      outlineColor="#00000088"
+      outlineColor="#000000"
+      outlineOpacity={0.53}
     >
       {label}
     </Text>
