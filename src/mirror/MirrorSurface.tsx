@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { Group, Mesh, PlaneGeometry, Vector3, type PerspectiveCamera } from 'three'
-import { AVATAR_ONLY_MASK, FULL_SCENE_MASK, tagAvatarsForMirror } from './avatarLayer'
+import { Group, Mesh, Object3D, PlaneGeometry, Vector3, type PerspectiveCamera } from 'three'
+import { AVATAR_ONLY_MASK, FULL_SCENE_MASK, MIRROR_AVATAR_LAYER, collectMirrorTargets } from './avatarLayer'
 import { LayeredReflector } from './LayeredReflector'
 
 /**
@@ -33,7 +33,7 @@ export interface MirrorSurfaceProps {
 const _camPos = new Vector3()
 const _mirrorPos = new Vector3()
 
-/** アバタータグ付けの再走査間隔（フレーム数）。参加/退出・VRM遅延ロードに追随する */
+/** アバター全走査の間隔（フレーム数）。参加/退出・VRM遅延ロードに追随する */
 const RESCAN_FRAMES = 60
 
 export const MirrorSurface = ({
@@ -47,7 +47,6 @@ export const MirrorSurface = ({
   const fallbackRef = useRef<Mesh>(null)
   const reflectorRef = useRef<LayeredReflector | null>(null)
   const reflectingRef = useRef(true)
-  const frameRef = useRef(0)
 
   useEffect(() => {
     const group = groupRef.current
@@ -64,9 +63,36 @@ export const MirrorSurface = ({
     })
     reflector.reflectLayersMask = quality === 'hq' ? FULL_SCENE_MASK : AVATAR_ONLY_MASK
     reflector.visible = reflectingRef.current
+
+    if (quality === 'lq') {
+      // アバター(SkinnedMesh)とライトへの鏡用レイヤータグ付け。
+      // ホストが毎フレームアバターのlayersを設定し直しても消されないよう、
+      // 反射レンダリング直前に毎回当て直す（enableは冪等・キャッシュで極小コスト）。
+      // 全走査は約1秒ごと＝参加/退出・VRM遅延ロードに追随。
+      let frame = 0
+      let targets: Object3D[] = []
+      let lastSummary = ''
+      reflector.onBeforeReflect = (scene) => {
+        if (frame++ % RESCAN_FRAMES === 0) {
+          const scan = collectMirrorTargets(scene)
+          targets = scan.targets
+          // 実機診断ログ（状態が変わったときだけ）: LQに何も映らない等の切り分け用
+          const summary = `skinned=${scan.skinned} lights=${scan.lights} nodes=${scan.totalNodes}`
+          if (summary !== lastSummary) {
+            lastSummary = summary
+            const skinnedInfo = scan.targets
+              .filter((o) => (o as Object3D & { isSkinnedMesh?: boolean }).isSkinnedMesh)
+              .slice(0, 8)
+              .map((o) => `${o.name || '(no name)'}#layers=${o.layers.mask}`)
+            console.info(`[xrift-mirror] LQ scan: ${summary}`, skinnedInfo)
+          }
+        }
+        for (const o of targets) o.layers.enable(MIRROR_AVATAR_LAYER)
+      }
+    }
+
     group.add(reflector)
     reflectorRef.current = reflector
-    frameRef.current = 0 // 次のフレームで即タグ付けを走らせる
     return () => {
       group.remove(reflector)
       geometry.dispose()
@@ -75,14 +101,9 @@ export const MirrorSurface = ({
     }
   }, [width, height, quality])
 
-  useFrame(({ camera, gl, scene }) => {
+  useFrame(({ camera, gl }) => {
     const reflector = reflectorRef.current
     if (!reflector) return
-
-    // LQ: アバター(SkinnedMesh)とライトへの鏡用レイヤータグ付け（冪等・非破壊）
-    if (quality === 'lq' && frameRef.current++ % RESCAN_FRAMES === 0) {
-      tagAvatarsForMirror(scene)
-    }
 
     // 距離LOD: 遠い鏡は反射レンダリングを止める（ヒステリシスでチラつき防止）
     const activeCamera = (gl.xr.isPresenting ? gl.xr.getCamera() : camera) as PerspectiveCamera

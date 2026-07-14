@@ -19,4 +19,6 @@ export {
   AVATAR_ONLY_MASK,
   FULL_SCENE_MASK,
   tagAvatarsForMirror,
+  collectMirrorTargets,
 } from './mirror/avatarLayer'
+export type { MirrorScanResult } from './mirror/avatarLayer'

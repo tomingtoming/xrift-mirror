@@ -88,6 +88,12 @@ export class LayeredReflector extends Mesh {
   /** 反射に使う仮想カメラの layers マスク。毎フレーム反射前に適用される */
   reflectLayersMask = 0xffffffff
 
+  /**
+   * 反射レンダリングの直前に毎回呼ばれるフック。ホストが毎フレーム
+   * layersを設定し直す環境でも確実に効くよう、レイヤータグ付けはここで行う
+   */
+  onBeforeReflect?: (scene: Scene) => void
+
   /** 鏡が背を向けていても反射を更新するか */
   forceUpdate = false
 
@@ -153,6 +159,8 @@ export class LayeredReflector extends Mesh {
       const isFacingAway = view.dot(normal) > 0
 
       if (isFacingAway === true && scope.forceUpdate === false) return
+
+      scope.onBeforeReflect?.(scene)
 
       view.reflect(normal).negate()
       view.add(reflectorWorldPosition)
