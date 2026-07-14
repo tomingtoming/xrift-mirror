@@ -3,7 +3,7 @@
     "distDir": "./dist",
     "buildCommand": "npm run build",
     "title": "ミラー",
-    "description": "どのワールドにも持ち込める大きな鏡（幅3.6m×高さ2.85m）。右端のスイッチでHQ/LQ/OFFの3モードを切替できます（全員に同期）。HQ=全景が映る高画質・LQ=アバターだけ映る軽量（ワールドを再描画しないので重いワールドでも軽い）・OFF=枠だけ。10m以上離れると反射を自動停止します。使い終わったらOFF推奨。ソース: https://github.com/tomingtoming/xrift-mirror",
+    "description": "どのワールドにも持ち込める大きな鏡（幅3.6m×高さ2.85m）。右端のスイッチでHQ/LQ/OFFの3モードを切替できます（押した人にだけ反映＝ローカル）。HQ=全景が映る高画質・LQ=アバターだけ映る軽量（ワールドを再描画しないので重いワールドでも軽い）・OFF=枠だけ。10m以上離れると反射を自動停止します。使い終わったらOFF推奨。ソース: https://github.com/tomingtoming/xrift-mirror",
     "thumbnailPath": "thumbnail.png"
   }
 }
