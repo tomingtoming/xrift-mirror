@@ -1,6 +1,6 @@
 {
   "name": "xrift-mirror",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Switchable HQ/LQ/OFF stand mirror for XRift worlds & items — 切替スイッチ付き姿見ミラー",
   "type": "module",
   "main": "./lib/index.js",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./lib/index.d.ts",
       "import": "./lib/index.js"
+    },
+    "./xrift": {
+      "types": "./lib/xrift.d.ts",
+      "import": "./lib/xrift.js"
     }
   },
   "files": [
@@ -32,8 +36,14 @@
     "react": ">=19.0.0",
     "three": ">=0.176.0"
   },
+  "peerDependenciesMeta": {
+    "@xrift/world-components": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@originjs/vite-plugin-federation": "^1.4.1",
+    "@xrift/world-components": "^0.41.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/rapier": "^2.2.0",
@@ -53,9 +63,6 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "dependencies": {
-    "@xrift/world-components": "*"
   },
   "license": "MIT",
   "author": "toming (https://toming.app)",

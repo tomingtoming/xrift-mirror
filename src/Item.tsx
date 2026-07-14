@@ -1,5 +1,6 @@
 import { useItem, usePlacementState } from '@xrift/world-components'
-import { StandMirror, mirrorLayout } from './mirror/StandMirror'
+import { mirrorLayout } from './mirror/StandMirror'
+import { XRiftStandMirror } from './xrift'
 
 /**
  * ミラー（アイテム版）— どのワールドにも持ち込める鏡。
@@ -31,7 +32,7 @@ const MirrorLive = ({ position = [0, 0, 0], scale = 1 }: ItemProps) => {
   const { id } = useItem()
   return (
     <group position={position} scale={scale}>
-      <StandMirror width={MIRROR_W} height={MIRROR_H} defaultMode="lq" syncId={`xmirror:${id}`} />
+      <XRiftStandMirror width={MIRROR_W} height={MIRROR_H} defaultMode="lq" syncId={`xmirror:${id}`} />
     </group>
   )
 }

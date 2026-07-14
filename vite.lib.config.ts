@@ -14,16 +14,19 @@ export default defineConfig({
     react(),
     dts({
       insertTypesEntry: true,
-      include: ['src/lib.ts', 'src/Item.tsx', 'src/mirror'],
+      include: ['src/lib.ts', 'src/xrift.tsx', 'src/mirror'],
       outDir: 'lib',
     }),
   ],
   build: {
     outDir: 'lib',
     lib: {
-      entry: path.resolve(__dirname, 'src/lib.ts'),
+      // index = three+R3Fのみに依存する本体 / xrift = @xrift/world-componentsを注入するアダプタ
+      entry: {
+        index: path.resolve(__dirname, 'src/lib.ts'),
+        xrift: path.resolve(__dirname, 'src/xrift.tsx'),
+      },
       formats: ['es'],
-      fileName: 'index',
     },
     rollupOptions: {
       external: [/^react($|\/)/, /^react-dom($|\/)/, /^three($|\/)/, /^@react-three\//, /^@xrift\//],

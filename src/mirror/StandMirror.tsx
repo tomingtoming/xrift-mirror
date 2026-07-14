@@ -1,20 +1,36 @@
 import { Text } from '@react-three/drei'
 import { RigidBody } from '@react-three/rapier'
-import { Interactable, Mirror, useInstanceState } from '@xrift/world-components'
+import { useState, type ReactNode } from 'react'
+import { MirrorSurface } from './MirrorSurface'
 
 /**
  * StandMirror — HQ/LQ/OFF切替つきの姿見ミラー（VRChat文化の輸入）。
  *
  * 参考: BOOTH「HQ・LQ切り替えスイッチ付ミラー」(booth.pm/ja/items/3640350)
  * ＝3モードをボタンで切り替えて描画コストを制御する。
- * XRift公式の <Mirror>（world-components・10m超でenvMap擬似ミラーへ自動LOD）に
- * 切替スイッチを被せて再現。モードは useInstanceState でインスタンス同期＝全員に同じ見え方。
  *
- * モードの翻訳: HQ=解像度1024 / LQ=解像度256（参考品の「アバターだけ映る」は
- * Mirrorにレイヤー制御が無く再現不能→低解像度で軽量化）/ OFF=鏡を外す（枠だけ・描画コストゼロ）。
+ * モード: HQ=全景ミラー（解像度1024）/ LQ=アバターだけ映る軽量ミラー
+ * （解像度512。反射パスのドローコールをアバター数体分まで削る＝本命の軽量化）
+ * / OFF=鏡を外す（枠だけ・描画コストゼロ）。
+ *
+ * 実装は three + React Three Fiber（+drei/rapier）だけで完結し、
+ * XRift API（@xrift/world-components）には依存しない:
+ * - 鏡面は three.js Reflector のフォーク（LayeredReflector）＝色合成なしの恒等ミラー
+ * - モード状態は非制御（内部state）が既定。全員同期したい場合は
+ *   mode/onModeChange を外部状態（XRiftの useInstanceState 等）に接続する
+ * - スイッチの操作は既定でR3Fのポインタイベント。VRコントローラ対応が要る
+ *   環境では renderInteract で Interactable 等を差し込む（./xrift.tsx が実装例）
  */
 
 export type MirrorMode = 'hq' | 'lq' | 'off'
+
+/** renderInteract に渡される、1ボタン分のインタラクション情報 */
+export interface InteractOpts {
+  id: string
+  /** ホバー時などに出す説明文 */
+  text: string
+  onInteract: () => void
+}
 
 export interface StandMirrorProps {
   position?: [number, number, number]
@@ -24,10 +40,15 @@ export interface StandMirrorProps {
   width?: number
   /** 鏡面の高さ（m） */
   height?: number
-  /** 初期モード。ワールド備え付けは 'off' 推奨（Quest配慮のVRChatミラー作法） */
+  /** 非制御時の初期モード。ワールド備え付けは 'off' 推奨（Quest配慮のVRChatミラー作法） */
   defaultMode?: MirrorMode
-  /** 同期キーの名前空間。複数設置時は一意にする */
-  syncId?: string
+  /** 制御モード。外部状態（XRiftのインスタンス同期等）と組むときに onModeChange とセットで使う */
+  mode?: MirrorMode
+  onModeChange?: (mode: MirrorMode) => void
+  /** スイッチのインタラクション実装の差し替え（XRiftのInteractable等）。既定はR3Fポインタイベント */
+  renderInteract?: (node: ReactNode, opts: InteractOpts) => ReactNode
+  /** ボタンidの名前空間。複数設置時は一意にする */
+  id?: string
 }
 
 const PEDESTAL_H = 0.22
@@ -50,10 +71,22 @@ export const mirrorLayout = (width: number, height: number) => {
 }
 
 const MODES: { mode: MirrorMode; label: string; text: string }[] = [
-  { mode: 'hq', label: 'HQ', text: '高画質ミラー（全員に反映）' },
-  { mode: 'lq', label: 'LQ', text: '軽量ミラー（全員に反映）' },
-  { mode: 'off', label: 'OFF', text: 'ミラーを消す（全員に反映）' },
+  { mode: 'hq', label: 'HQ', text: '高画質ミラー（全景）' },
+  { mode: 'lq', label: 'LQ', text: '軽量ミラー（アバターだけ映る）' },
+  { mode: 'off', label: 'OFF', text: 'ミラーを消す' },
 ]
+
+/** 既定のインタラクション: R3Fのポインタイベントで反応する */
+const defaultRenderInteract = (node: ReactNode, { onInteract }: InteractOpts) => (
+  <group
+    onClick={(e) => {
+      e.stopPropagation()
+      onInteract()
+    }}
+  >
+    {node}
+  </group>
+)
 
 export const StandMirror = ({
   position = [0, 0, 0],
@@ -61,9 +94,17 @@ export const StandMirror = ({
   width = 1.6,
   height = 2.2,
   defaultMode = 'off',
-  syncId = 'xrift-mirror',
+  mode: controlledMode,
+  onModeChange,
+  renderInteract = defaultRenderInteract,
+  id = 'xrift-mirror',
 }: StandMirrorProps) => {
-  const [mode, setMode] = useInstanceState<MirrorMode>(`${syncId}:mode`, defaultMode)
+  const [localMode, setLocalMode] = useState<MirrorMode>(defaultMode)
+  const mode = controlledMode ?? localMode
+  const setMode = (m: MirrorMode) => {
+    onModeChange?.(m)
+    if (controlledMode === undefined) setLocalMode(m)
+  }
   const { frameW, frameH, centerY, btnX, btnYs, colCenterY } = mirrorLayout(width, height)
 
   return (
@@ -83,17 +124,9 @@ export const StandMirror = ({
         </mesh>
       </RigidBody>
 
-      {/* 鏡面（OFFのときは消灯ガラス）
-          color=0x808080: 公式Mirror既定の0xccccccはReflectorのblendOverlayで
-          中間調を約1.6倍に持ち上げ、鏡の中だけ全てパステルに脱色する。
-          overlay(base, 0.5)は恒等変換＝無色の正しい鏡 */}
+      {/* 鏡面（OFFのときは消灯ガラス） */}
       {mode !== 'off' ? (
-        <Mirror
-          position={[0, centerY, 0]}
-          size={[width, height]}
-          color={0x808080}
-          textureResolution={mode === 'hq' ? 1024 : 256}
-        />
+        <MirrorSurface position={[0, centerY, 0]} width={width} height={height} quality={mode} />
       ) : (
         <mesh position={[0, centerY, 0]}>
           <planeGeometry args={[width, height]} />
@@ -107,58 +140,40 @@ export const StandMirror = ({
         <meshStandardMaterial color="#2c313c" metalness={0.5} roughness={0.4} />
       </mesh>
 
-      {/* モード切替スイッチ（右端に縦並び・現在モードが青く光る・全員に同期） */}
+      {/* モード切替スイッチ（右端に縦並び・現在モードが青く光る） */}
       {MODES.map(({ mode: m, label, text }, i) => (
-        <ModeButton
-          key={m}
-          id={`${syncId}-${m}`}
-          position={[btnX, btnYs[i], 0]}
-          color={mode === m ? '#2a6fd6' : '#37474f'}
-          active={mode === m}
-          label={label}
-          text={text}
-          onInteract={() => setMode(m)}
-        />
+        <group key={m} position={[btnX, btnYs[i], 0]}>
+          {renderInteract(
+            <ModeButton
+              color={mode === m ? '#2a6fd6' : '#37474f'}
+              active={mode === m}
+              label={label}
+            />,
+            { id: `${id}-${m}`, text, onInteract: () => setMode(m) },
+          )}
+        </group>
       ))}
     </group>
   )
 }
 
-/** ラベル常時表示のモードボタン（VRはホバー文言が見えないため） */
-const ModeButton = ({
-  id,
-  position,
-  color,
-  active,
-  label,
-  text,
-  onInteract,
-}: {
-  id: string
-  position: [number, number, number]
-  color: string
-  active: boolean
-  label: string
-  text: string
-  onInteract: () => void
-}) => (
-  <Interactable id={id} onInteract={onInteract} interactionText={text}>
-    <group position={position}>
-      <mesh castShadow>
-        <boxGeometry args={[0.14, 0.07, 0.03]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={active ? 0.8 : 0.25} />
-      </mesh>
-      <Text
-        position={[0, 0, 0.017]}
-        fontSize={0.028}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.002}
-        outlineColor="#00000088"
-      >
-        {label}
-      </Text>
-    </group>
-  </Interactable>
+/** ラベル常時表示のモードボタン（VRはホバー文言が見えないため）。見た目のみ */
+const ModeButton = ({ color, active, label }: { color: string; active: boolean; label: string }) => (
+  <group>
+    <mesh castShadow>
+      <boxGeometry args={[0.14, 0.07, 0.03]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={active ? 0.8 : 0.25} />
+    </mesh>
+    <Text
+      position={[0, 0, 0.017]}
+      fontSize={0.028}
+      color="#ffffff"
+      anchorX="center"
+      anchorY="middle"
+      outlineWidth={0.002}
+      outlineColor="#00000088"
+    >
+      {label}
+    </Text>
+  </group>
 )
