@@ -1,6 +1,6 @@
 {
   "name": "xrift-mirror",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Switchable HQ/LQ/OFF stand mirror for XRift worlds & items — 切替スイッチ付き姿見ミラー",
   "type": "module",
   "main": "./lib/index.js",

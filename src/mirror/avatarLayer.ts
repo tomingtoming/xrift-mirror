@@ -122,3 +122,50 @@ export const debugDumpNamedMeshes = (root: Object3D, limit = 60): MeshDumpEntry[
   })
   return entries
 }
+
+/**
+ * 実機診断用その2（toming 2026-07-15、切り分け後に撤去）: 名前付き
+ * メッシュ6個の中に既定アバターが1個もいなかった＝実体は名前無しの
+ * オブジェクトで構成されている可能性。そこで「名前付きコンテナ
+ * （グループ等）ごとに配下のメッシュ内訳を集計」する形に変えて、
+ * 名前無しリーフでも名前付き祖先経由で存在を検出する。
+ */
+export interface SceneOutlineEntry {
+  name: string
+  type: string
+  /** ルートからの深さ */
+  depth: number
+  skinnedDescendants: number
+  meshDescendants: number
+  totalDescendants: number
+}
+
+export const debugSceneOutline = (root: Object3D, limit = 100): SceneOutlineEntry[] => {
+  const entries: SceneOutlineEntry[] = []
+  const depthOf = (obj: Object3D): number => {
+    let d = 0
+    for (let p = obj.parent; p; p = p.parent) d++
+    return d
+  }
+  root.traverse((obj) => {
+    if (!obj.name || entries.length >= limit) return
+    let skinned = 0
+    let mesh = 0
+    let total = 0
+    obj.traverse((d) => {
+      total++
+      const o = d as Object3D & { isSkinnedMesh?: boolean; isMesh?: boolean }
+      if (o.isSkinnedMesh) skinned++
+      else if (o.isMesh) mesh++
+    })
+    entries.push({
+      name: obj.name,
+      type: obj.type,
+      depth: depthOf(obj),
+      skinnedDescendants: skinned,
+      meshDescendants: mesh,
+      totalDescendants: total,
+    })
+  })
+  return entries
+}
