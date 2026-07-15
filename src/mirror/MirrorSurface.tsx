@@ -1,14 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Group, Mesh, Object3D, PlaneGeometry, Vector3, type PerspectiveCamera } from 'three'
-import {
-  AVATAR_ONLY_MASK,
-  FULL_SCENE_MASK,
-  MIRROR_AVATAR_LAYER,
-  collectMirrorTargets,
-  debugDumpAvatarCandidateMeshes,
-  debugSceneOutline,
-} from './avatarLayer'
+import { AVATAR_ONLY_MASK, FULL_SCENE_MASK, MIRROR_AVATAR_LAYER, collectMirrorTargets } from './avatarLayer'
 import { LayeredReflector } from './LayeredReflector'
 
 /**
@@ -80,30 +73,15 @@ export const MirrorSurface = ({
       let frame = 0
       let targets: Object3D[] = []
       let lastSummary = ''
-      let dumpedMeshes = false // 実機診断（切り分け後に撤去）: 初回スキャンだけ全メッシュ型を洗い出す
       reflector.onBeforeReflect = (scene) => {
         if (frame++ % RESCAN_FRAMES === 0) {
           const scan = collectMirrorTargets(scene)
           targets = scan.targets
           // 実機診断ログ（状態が変わったときだけ）: LQに何も映らない等の切り分け用
-          const summary = `skinned=${scan.skinned} thirdPersonOnly=${scan.thirdPersonOnly} lights=${scan.lights} nodes=${scan.totalNodes}`
+          const summary = `skinned=${scan.skinned} thirdPersonOnly=${scan.thirdPersonOnly} segmented=${scan.segmented} lights=${scan.lights} nodes=${scan.totalNodes}`
           if (summary !== lastSummary) {
             lastSummary = summary
-            const targetInfo = scan.targets
-              .filter((o) => !(o as Object3D & { isLight?: boolean }).isLight)
-              .slice(0, 8)
-              .map((o) => {
-                const skinned = (o as Object3D & { isSkinnedMesh?: boolean }).isSkinnedMesh
-                return `${o.name || '(no name)'}#layers=${o.layers.mask}${skinned ? '' : '(non-skinned)'}`
-              })
-            console.warn(`[xrift-mirror] LQ scan: ${summary}`, targetInfo)
-          }
-          if (!dumpedMeshes) {
-            dumpedMeshes = true
-            const candidates = debugDumpAvatarCandidateMeshes(scene)
-            console.warn(`[xrift-mirror] LQ avatar candidate meshes (${candidates.length}):`, candidates)
-            const outline = debugSceneOutline(scene).filter((e) => e.totalDescendants > 1)
-            console.warn(`[xrift-mirror] LQ scene outline (${outline.length} named containers):`, outline)
+            console.warn(`[xrift-mirror] LQ scan: ${summary}`)
           }
         }
         for (const o of targets) o.layers.enable(MIRROR_AVATAR_LAYER)

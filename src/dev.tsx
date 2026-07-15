@@ -72,6 +72,38 @@ const TestAvatar = ({ position }: { position: [number, number, number] }) => {
   return <primitive object={mesh} position={position} />
 }
 
+/**
+ * LQ検証用その2: XRift既定アバター（スキン無しプレースホルダー、実機で
+ * 2026-07-15に確認）を模したダミー（緑）。体パーツごとの無名Meshが
+ * 名前付きボーン風Object3D（hips/spine/chest/handL）にぶら下がる構造。
+ * SkinnedMeshではないので、collectMirrorTargetsの関節名連鎖検出
+ * （isJointName + hasJointAncestorChain）でのみ拾える。
+ */
+const TestSegmentedAvatar = ({ position }: { position: [number, number, number] }) => (
+  <group position={position} name="root">
+    <group name="hips">
+      <group name="spine">
+        <mesh castShadow>
+          <coneGeometry args={[0.22, 0.9, 8]} />
+          <meshStandardMaterial color="#6fbf73" />
+        </mesh>
+        <group name="handL" position={[-0.3, 0.7, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.15, 0.15, 0.15]} />
+            <meshStandardMaterial color="#6fbf73" />
+          </mesh>
+        </group>
+        <group name="handR" position={[0.3, 0.7, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.15, 0.15, 0.15]} />
+            <meshStandardMaterial color="#6fbf73" />
+          </mesh>
+        </group>
+      </group>
+    </group>
+  </group>
+)
+
 const App = () => (
   <DevEnvironment camera={{ position: [-0.8, 1.6, 7] }} spawnPosition={[-0.8, 1, 7]}>
     <XRiftDevBridge>
@@ -85,9 +117,10 @@ const App = () => (
     {/* 比較用: world-components非依存の素のStandMirror（HQ・ローカル状態・ポインタ操作） */}
     <StandMirror position={[-3.4, 0, 0]} defaultMode="hq" id="dev-hq" />
 
-    {/* 映り分けの被写体: 赤=ダミーアバター（SkinnedMesh）・青=静的メッシュ。
+    {/* 映り分けの被写体: 赤=ダミーアバター（SkinnedMesh）・緑=セグメント方式ダミー（既定アバター模倣）・青=静的メッシュ。
         中央（LQ）用と左（HQ）用にそれぞれ1組（反射幾何的に両方の鏡に同時には映らないため） */}
     <TestAvatar position={[-1.7, 0.7, 2.6]} />
+    <TestSegmentedAvatar position={[-1.1, 0, 2.6]} />
     <mesh position={[0.7, 0.5, 2.6]} castShadow>
       <boxGeometry args={[0.8, 1, 0.8]} />
       <meshStandardMaterial color="#5687d9" />
