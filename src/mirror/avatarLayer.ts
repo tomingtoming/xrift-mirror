@@ -107,51 +107,38 @@ const describeUserData = (userData: Record<string, unknown>): string => {
     .join(',')
 }
 
-export interface MeshDumpEntry {
-  name: string
-  kind: 'skinned' | 'instanced' | 'sprite' | 'mesh'
+/**
+ * 実機診断その3（toming 2026-07-15、切り分け後に撤去）: シーン全体の
+ * メッシュ無差別ダンプ（80件）はワールドの無関係な物体で埋まり、肝心の
+ * アバターパーツ（named containerの直接の子）まで届かなかった。そこで
+ * 「名前付きコンテナ（グループ等）の“直接の子”であるメッシュだけ」に
+ * 絞り込む＝無関係なワールド物体（named containerの子ではない）を
+ * 自然に除外しつつ、セグメント方式アバターの各パーツピンポイントで拾う。
+ */
+export interface AvatarCandidateMeshEntry {
+  containerName: string
+  meshName: string
   layers: number
   visible: boolean
   userData: string
-  /** 無名メッシュの手がかり用: 直近の名前付き祖先 */
-  nearestNamedAncestor: string
 }
 
-export const debugDumpAllMeshes = (root: Object3D, limit = 80): MeshDumpEntry[] => {
-  const entries: MeshDumpEntry[] = []
-  root.traverse((obj) => {
-    if (entries.length >= limit) return
-    const o = obj as Object3D & {
-      isSkinnedMesh?: boolean
-      isInstancedMesh?: boolean
-      isSprite?: boolean
-      isMesh?: boolean
+export const debugDumpAvatarCandidateMeshes = (root: Object3D, limit = 60): AvatarCandidateMeshEntry[] => {
+  const entries: AvatarCandidateMeshEntry[] = []
+  root.traverse((container) => {
+    if (!container.name || entries.length >= limit) return
+    for (const child of container.children) {
+      if (entries.length >= limit) break
+      const o = child as Object3D & { isMesh?: boolean }
+      if (!o.isMesh) continue
+      entries.push({
+        containerName: container.name,
+        meshName: child.name || '(no name)',
+        layers: child.layers.mask,
+        visible: child.visible,
+        userData: describeUserData(child.userData),
+      })
     }
-    const kind = o.isSkinnedMesh
-      ? 'skinned'
-      : o.isInstancedMesh
-        ? 'instanced'
-        : o.isSprite
-          ? 'sprite'
-          : o.isMesh
-            ? 'mesh'
-            : undefined
-    if (!kind) return
-    let nearestNamedAncestor = ''
-    for (let p = obj.parent; p; p = p.parent) {
-      if (p.name) {
-        nearestNamedAncestor = p.name
-        break
-      }
-    }
-    entries.push({
-      name: obj.name || '(no name)',
-      kind,
-      layers: obj.layers.mask,
-      visible: obj.visible,
-      userData: describeUserData(obj.userData),
-      nearestNamedAncestor: nearestNamedAncestor || '(none)',
-    })
   })
   return entries
 }
