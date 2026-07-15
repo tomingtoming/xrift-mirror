@@ -78,14 +78,17 @@ export const MirrorSurface = ({
           const scan = collectMirrorTargets(scene)
           targets = scan.targets
           // 実機診断ログ（状態が変わったときだけ）: LQに何も映らない等の切り分け用
-          const summary = `skinned=${scan.skinned} lights=${scan.lights} nodes=${scan.totalNodes}`
+          const summary = `skinned=${scan.skinned} thirdPersonOnly=${scan.thirdPersonOnly} lights=${scan.lights} nodes=${scan.totalNodes}`
           if (summary !== lastSummary) {
             lastSummary = summary
-            const skinnedInfo = scan.targets
-              .filter((o) => (o as Object3D & { isSkinnedMesh?: boolean }).isSkinnedMesh)
+            const targetInfo = scan.targets
+              .filter((o) => !(o as Object3D & { isLight?: boolean }).isLight)
               .slice(0, 8)
-              .map((o) => `${o.name || '(no name)'}#layers=${o.layers.mask}`)
-            console.warn(`[xrift-mirror] LQ scan: ${summary}`, skinnedInfo)
+              .map((o) => {
+                const skinned = (o as Object3D & { isSkinnedMesh?: boolean }).isSkinnedMesh
+                return `${o.name || '(no name)'}#layers=${o.layers.mask}${skinned ? '' : '(non-skinned)'}`
+              })
+            console.warn(`[xrift-mirror] LQ scan: ${summary}`, targetInfo)
           }
         }
         for (const o of targets) o.layers.enable(MIRROR_AVATAR_LAYER)

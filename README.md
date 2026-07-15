@@ -71,11 +71,11 @@ import { StandMirror } from 'xrift-mirror'
 鏡面は three.js の [`Reflector`](https://github.com/mrdoob/three.js/blob/dev/examples/jsm/objects/Reflector.js)（MIT）をフォークした `LayeredReflector` です。反射用の仮想カメラを自前で所有し、`reflectLayersMask` で「鏡に何を映すか」を選べます。
 
 - XRift のアバターは three-vrm の VRMFirstPerson 層規約（9=一人称専用・10=三人称専用）を使いますが、体の大半は layer 0 でワールドと同居しているため、既存レイヤーだけでは分離できません
-- そこでシーンを定期走査して **SkinnedMesh（アバター≒スキンメッシュ）とライトに鏡専用レイヤー（30番ビット）を追加** します。Layers はビットマスクなので既存のレイヤー運用に対して非破壊です
+- そこでシーンを定期走査して **SkinnedMesh（アバター≒スキンメッシュ）・layer 10（三人称専用）会員のオブジェクト・ライトに鏡専用レイヤー（30番ビット）を追加** します。Layers はビットマスクなので既存のレイヤー運用に対して非破壊です。layer 10 判定を加えているのは、XRift既定のスキン無しアバター（プレースホルダー）を拾うため（SkinnedMesh単独では検出できない）
 - LQ の仮想カメラはこの鏡専用レイヤーだけを描画 → 反射パスのドローコールがアバター数体分まで減ります
 - HQ は一人称専用レイヤー(9)だけを除いた全景を描画（一人称の頭・体が二重に映るのを防ぐ）
 
-既知の限界: アバターに追従する **非スキンの剛体アクセサリは LQ では映りません**（SkinnedMesh 検出のため）。
+既知の限界: **SkinnedMeshでもTHIRD_PERSON_ONLYでもない非アバター装着物（剛体アクセサリ等）は LQ では映りません**。
 
 ## クレジット
 
