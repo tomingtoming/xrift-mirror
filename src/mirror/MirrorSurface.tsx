@@ -6,7 +6,7 @@ import {
   FULL_SCENE_MASK,
   MIRROR_AVATAR_LAYER,
   collectMirrorTargets,
-  debugDumpNamedMeshes,
+  debugDumpAllMeshes,
   debugSceneOutline,
 } from './avatarLayer'
 import { LayeredReflector } from './LayeredReflector'
@@ -100,8 +100,8 @@ export const MirrorSurface = ({
           }
           if (!dumpedMeshes) {
             dumpedMeshes = true
-            const dump = debugDumpNamedMeshes(scene)
-            console.warn(`[xrift-mirror] LQ mesh dump (${dump.length} named mesh-likes):`, dump)
+            const dump = debugDumpAllMeshes(scene)
+            console.warn(`[xrift-mirror] LQ mesh dump (${dump.length} mesh-likes, named+unnamed):`, dump)
             const outline = debugSceneOutline(scene).filter((e) => e.totalDescendants > 1)
             console.warn(`[xrift-mirror] LQ scene outline (${outline.length} named containers):`, outline)
           }

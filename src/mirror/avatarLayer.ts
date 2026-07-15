@@ -88,20 +88,39 @@ export const tagAvatarsForMirror = (root: Object3D): void => {
 
 /**
  * 実機診断用（toming 2026-07-15、切り分け後に撤去）: 既定アバターが
- * SkinnedMeshでもTHIRD_PERSON_ONLYでもないと判明したため、名前付き
- * メッシュ系オブジェクトを型を問わず洗い出して正体を特定する。
+ * SkinnedMeshでもTHIRD_PERSON_ONLYでもないと判明。debugSceneOutlineで
+ * 既定アバターは「体の各パーツごとに無名Meshが名前付きボーン風
+ * Object3D（hips/spine/chest/neck/head/shoulderL/...）にぶら下がる
+ * セグメント方式」と判明したため、無名メッシュも拾い、userData（アプリ
+ * 側が意図的に仕込んだ目印がないか）と直近の名前付き祖先を洗い出す。
  */
+const describeUserData = (userData: Record<string, unknown>): string => {
+  const keys = Object.keys(userData)
+  if (keys.length === 0) return ''
+  return keys
+    .map((k) => {
+      const v = userData[k]
+      const t = typeof v
+      const shown = t === 'string' || t === 'number' || t === 'boolean' || v === null ? String(v) : `<${t}>`
+      return `${k}=${shown}`
+    })
+    .join(',')
+}
+
 export interface MeshDumpEntry {
   name: string
   kind: 'skinned' | 'instanced' | 'sprite' | 'mesh'
   layers: number
   visible: boolean
+  userData: string
+  /** 無名メッシュの手がかり用: 直近の名前付き祖先 */
+  nearestNamedAncestor: string
 }
 
-export const debugDumpNamedMeshes = (root: Object3D, limit = 60): MeshDumpEntry[] => {
+export const debugDumpAllMeshes = (root: Object3D, limit = 80): MeshDumpEntry[] => {
   const entries: MeshDumpEntry[] = []
   root.traverse((obj) => {
-    if (!obj.name || entries.length >= limit) return
+    if (entries.length >= limit) return
     const o = obj as Object3D & {
       isSkinnedMesh?: boolean
       isInstancedMesh?: boolean
@@ -118,7 +137,21 @@ export const debugDumpNamedMeshes = (root: Object3D, limit = 60): MeshDumpEntry[
             ? 'mesh'
             : undefined
     if (!kind) return
-    entries.push({ name: obj.name, kind, layers: obj.layers.mask, visible: obj.visible })
+    let nearestNamedAncestor = ''
+    for (let p = obj.parent; p; p = p.parent) {
+      if (p.name) {
+        nearestNamedAncestor = p.name
+        break
+      }
+    }
+    entries.push({
+      name: obj.name || '(no name)',
+      kind,
+      layers: obj.layers.mask,
+      visible: obj.visible,
+      userData: describeUserData(obj.userData),
+      nearestNamedAncestor: nearestNamedAncestor || '(none)',
+    })
   })
   return entries
 }
@@ -138,6 +171,8 @@ export interface SceneOutlineEntry {
   skinnedDescendants: number
   meshDescendants: number
   totalDescendants: number
+  layers: number
+  userData: string
 }
 
 export const debugSceneOutline = (root: Object3D, limit = 100): SceneOutlineEntry[] => {
@@ -165,6 +200,8 @@ export const debugSceneOutline = (root: Object3D, limit = 100): SceneOutlineEntr
       skinnedDescendants: skinned,
       meshDescendants: mesh,
       totalDescendants: total,
+      layers: obj.layers.mask,
+      userData: describeUserData(obj.userData),
     })
   })
   return entries
