@@ -1,7 +1,13 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Group, Mesh, Object3D, PlaneGeometry, Vector3, type PerspectiveCamera } from 'three'
-import { AVATAR_ONLY_MASK, FULL_SCENE_MASK, MIRROR_AVATAR_LAYER, collectMirrorTargets } from './avatarLayer'
+import {
+  AVATAR_ONLY_MASK,
+  FULL_SCENE_MASK,
+  MIRROR_AVATAR_LAYER,
+  collectMirrorTargets,
+  debugDumpNamedMeshes,
+} from './avatarLayer'
 import { LayeredReflector } from './LayeredReflector'
 
 /**
@@ -73,6 +79,7 @@ export const MirrorSurface = ({
       let frame = 0
       let targets: Object3D[] = []
       let lastSummary = ''
+      let dumpedMeshes = false // 実機診断（切り分け後に撤去）: 初回スキャンだけ全メッシュ型を洗い出す
       reflector.onBeforeReflect = (scene) => {
         if (frame++ % RESCAN_FRAMES === 0) {
           const scan = collectMirrorTargets(scene)
@@ -89,6 +96,11 @@ export const MirrorSurface = ({
                 return `${o.name || '(no name)'}#layers=${o.layers.mask}${skinned ? '' : '(non-skinned)'}`
               })
             console.warn(`[xrift-mirror] LQ scan: ${summary}`, targetInfo)
+          }
+          if (!dumpedMeshes) {
+            dumpedMeshes = true
+            const dump = debugDumpNamedMeshes(scene)
+            console.warn(`[xrift-mirror] LQ mesh dump (${dump.length} named mesh-likes):`, dump)
           }
         }
         for (const o of targets) o.layers.enable(MIRROR_AVATAR_LAYER)

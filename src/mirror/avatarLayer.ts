@@ -85,3 +85,40 @@ export const collectMirrorTargets = (root: Object3D): MirrorScanResult => {
 export const tagAvatarsForMirror = (root: Object3D): void => {
   for (const o of collectMirrorTargets(root).targets) o.layers.enable(MIRROR_AVATAR_LAYER)
 }
+
+/**
+ * 実機診断用（toming 2026-07-15、切り分け後に撤去）: 既定アバターが
+ * SkinnedMeshでもTHIRD_PERSON_ONLYでもないと判明したため、名前付き
+ * メッシュ系オブジェクトを型を問わず洗い出して正体を特定する。
+ */
+export interface MeshDumpEntry {
+  name: string
+  kind: 'skinned' | 'instanced' | 'sprite' | 'mesh'
+  layers: number
+  visible: boolean
+}
+
+export const debugDumpNamedMeshes = (root: Object3D, limit = 60): MeshDumpEntry[] => {
+  const entries: MeshDumpEntry[] = []
+  root.traverse((obj) => {
+    if (!obj.name || entries.length >= limit) return
+    const o = obj as Object3D & {
+      isSkinnedMesh?: boolean
+      isInstancedMesh?: boolean
+      isSprite?: boolean
+      isMesh?: boolean
+    }
+    const kind = o.isSkinnedMesh
+      ? 'skinned'
+      : o.isInstancedMesh
+        ? 'instanced'
+        : o.isSprite
+          ? 'sprite'
+          : o.isMesh
+            ? 'mesh'
+            : undefined
+    if (!kind) return
+    entries.push({ name: obj.name, kind, layers: obj.layers.mask, visible: obj.visible })
+  })
+  return entries
+}
